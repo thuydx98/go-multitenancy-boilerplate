@@ -2,36 +2,37 @@ package main
 
 import (
 	"fmt"
+	database "go-multitenancy-boilerplate/database"
 	routers "go-multitenancy-boilerplate/routers"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
-//Execution starts from main function
 func main() {
 
-	e := godotenv.Load()
-	fmt.Println(e)
+	// load environment variables from file.
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Start database services and load master database.
+	database.StartDatabaseServices()
 
 	r := routers.SetupRouter()
 
-	port := os.Getenv("port")
-
-	// For run on requested port
-	if len(os.Args) > 1 {
-		reqPort := os.Args[1]
-		if reqPort != "" {
-			port = reqPort
-		}
-	}
-
+	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" //localhost
+		port = "8000" //localhost
 	}
+
 	type Job interface {
 		Run()
 	}
 
-	r.Run(":" + port)
+	// Starting the router instance
+	if err := r.Run(":" + port); err != nil {
+		fmt.Print(err)
+	}
 }

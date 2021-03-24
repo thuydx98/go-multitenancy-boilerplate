@@ -1,27 +1,31 @@
 package v1resources
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Response struct for return
 type Response struct {
-	Status  int                    `json:"status,omitempty"`
-	Message string                 `json:"message,omitempty"`
-	Data    map[string]interface{} `json:"data,omitempty"`
+	Success bool          `json:"success"`
+	Message string        `json:"message,omitempty"`
+	Data    interface{}   `json:"data,omitempty"`
+	Errors  []interface{} `json:"error,omitempty"`
 }
 
 //Message returns map data
-func Message(status int, message string) map[string]interface{} {
-	return map[string]interface{}{
-		"status":  status,
-		"message": message,
-	}
+func Failed(c *gin.Context, status int, message string, errors ...interface{}) {
+	c.AbortWithStatusJSON(status, Response{
+		Success: false,
+		Message: message,
+		Errors:  errors,
+	})
 }
 
-//Respond returns basic response structure
-func Respond(w http.ResponseWriter, data map[string]interface{}) {
-	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+func Succeeded(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    data,
+	})
 }

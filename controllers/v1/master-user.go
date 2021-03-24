@@ -4,47 +4,48 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
-	"github.com/jinzhu/gorm"
 
 	database "go-multitenancy-boilerplate/database"
 	helpers "go-multitenancy-boilerplate/helpers"
 	middlewares "go-multitenancy-boilerplate/middlewares"
 	resources "go-multitenancy-boilerplate/resources/api/v1"
+	ss "go-multitenancy-boilerplate/resources/sessions"
 	services "go-multitenancy-boilerplate/services/v1"
 )
 
 // Init
-func SetupUserRoutes(router *gin.Engine) {
+func SetupMasterUserRoutes(router *gin.Engine) {
 
-	users := router.Group("/api/v1/users")
+	users := router.Group("/api/v1/master/users")
 
-	// Un-authorize APIs
-	users.Use(middlewares.FindTenancy(database.Connection))
+	users.POST("login", ss.HandleMasterLoginAttempt(database.Store), HandleMasterLogin)
+
+	users.Use(middlewares.IfMasterAuthorized(database.Store))
 	{
-		users.POST("login", HandleLogin)
+		// POST
+		users.POST("", HandleMasterCreateUser)
+		users.POST("logout", HandleMasterLogout)
 
-		// Authorized APIs
-		users.Use(middlewares.IfAuthorized(database.Store))
-		{
-			users.GET("{id}", HandleGetUserById)
-			users.GET("me", HandleGetCurrentUser)
+		// PUT
+		users.PUT("", HandleMasterUpdateUserDetails)
 
-			users.POST("", HandleCreateUser)
+		// GET
+		users.GET("{id}", HandleMasterGetUserById)
+		users.GET("me", HandleMasterGetCurrentUser)
 
-			users.PUT("", HandleUpdateUserDetails)
-
-			users.DELETE("", HandleDeleteUser)
-		}
+		// DELETE
+		users.DELETE("", HandleMasterDeleteUser)
 	}
 }
 
 // @Summary Create a new user
-// @tags users
-// @Router /api/users/create [post]
-func HandleCreateUser(c *gin.Context) {
+// @tags master/users
+// @Router /master/api/users/create [post]
+func HandleMasterCreateUser(c *gin.Context) {
 
 	// Binds Model and handles validation.
 	var json resources.CreateUserRequest
@@ -77,33 +78,25 @@ func HandleCreateUser(c *gin.Context) {
 		return
 	}
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
 	// Attempt to create a user.
-	insertedId, err := services.CreateUser(json.Email, json.Password, json.Type, db.(*gorm.DB))
+	insertedId, err := services.CreateMasterUser(json.Email, json.Password, json.Type)
 
 	if err != nil {
-		resources.Failed(c, http.StatusBadRequest, "Something went wrong while trying to process that, please try again.", err.Error())
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	resources.Succeeded(c, gin.H{
-		"id": insertedId,
-	})
+	resources.Succeeded(c, insertedId)
 }
 
 // @Summary Attempt to login using user details
-// @tags users
-// @Router /api/users/login [post]
-func HandleLogin(c *gin.Context) {
+// @tags master/users
+// @Router /master/api/users/login [post]
+func HandleMasterLogin(c *gin.Context) {
 
-	var json resources.LoginRequest
+	bindJson, _ := c.Get("bindedJson")
 
-	if err := c.ShouldBindJSON(&json); err != nil {
-		resources.Failed(c, http.StatusBadRequest, "Missing required fields, please try again.")
-		return
-	}
+	json := bindJson.(resources.LoginRequest)
 
 	if !helpers.ValidateEmail(json.Email) {
 		resources.Failed(c, http.StatusBadRequest, "Email or Password provided are incorrect, please try again.")
@@ -128,9 +121,7 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
+	// Get our session from database.
 	session, exists := c.Get("session")
 
 	if !exists {
@@ -138,7 +129,7 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	userId, _, err := services.LoginUser(json.Email, json.Password, db.(*gorm.DB))
+	userId, outcome, err := services.LoginMasterUser(json.Email, json.Password)
 
 	if err != nil {
 
@@ -148,38 +139,87 @@ func HandleLogin(c *gin.Context) {
 		}
 
 		// Were sending 422 as there is a validation concern.
-		resources.Failed(c, http.StatusUnprocessableEntity, "Something went wrong while trying to process that, please try again.", err.Error())
+		resources.Failed(c, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
-	// @todo make this into a map so userid's can be multiple.
-	session.(*sessions.Session).Values["userId"] = userId
+	// Create a copy of the host profile
+	hostProfile := session.(*sessions.Session).Values["profile"].(ss.HostProfile)
 
+	// Set session values to authorized
+	hostProfile.Authorized = 1
+	hostProfile.AuthorizedTime = time.Now().UTC()
+	hostProfile.UserId = userId
+
+	// Reset login attempts once successfully logged in.
+	hostProfile.LoginAttempts[json.Email].LoginAttempts = 0
+
+	// Set host profile back to values.
+	session.(*sessions.Session).Values["profile"] = hostProfile
+
+	// Save changes to our session.
 	if err := database.Store.Save(c.Request, c.Writer, session.(*sessions.Session)); err != nil {
 		fmt.Print(err)
 	}
 
-	resources.Succeeded(c, "You have successfully logged into your account.")
+	resources.Succeeded(c, outcome)
+}
+
+// @Summary Logs a user out of the system
+// @tags master/users
+// @Router /master/api/users/logout [post]
+func HandleMasterLogout(c *gin.Context) {
+
+	// Binds Model and handles validation.
+	var json resources.CreateUserRequest
+
+	if err := c.ShouldBindJSON(&json); err != nil {
+		resources.Failed(c, http.StatusBadRequest, "Incorrect details supplied, please try again.")
+		return
+	}
+
+	// Get our session from database.
+	session, err := database.Store.Get(c.Request, "connect.s.id")
+
+	if err != nil {
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Create a copy of the host profile
+	hostProfile := session.Values["profile"].(ss.HostProfile)
+
+	// Set session values to unauthorized
+	hostProfile.Authorized = 0
+
+	// Set host profile back to values.
+	session.Values["profile"] = hostProfile
+
+	// Save changes to our session.
+	if err := database.Store.Save(c.Request, c.Writer, session); err != nil {
+		fmt.Print(err)
+	}
+
+	resources.Succeeded(c, "You have successfully logged out of your account.")
 }
 
 // @Summary Updates a users details
-// @tags users
-// @Router /api/users/updateUserDetails [post]
-func HandleUpdateUserDetails(c *gin.Context) {
+// @tags master/users
+// @Router /master/api/users/updateUserDetails [post]
+func HandleMasterUpdateUserDetails(c *gin.Context) {
 	var json resources.UpdateUserRequest
 
 	if err := c.ShouldBindJSON(&json); err != nil {
 		resources.Failed(c, http.StatusBadRequest, "Missing required fields, please try again.")
+		log.Println(err)
 		return
 	}
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
-	outcome, err := services.UpdateUser(json.Id, json.Email, json.AccountType, json.FirstName, json.LastName, json.PhoneNumber, json.RecoveryEmail, db.(*gorm.DB))
+	outcome, err := services.UpdateMasterUser(json.Id, json.Email, json.AccountType, json.FirstName, json.LastName, json.PhoneNumber, json.RecoveryEmail)
 
 	if err != nil {
-		resources.Failed(c, http.StatusInternalServerError, "Something went wrong while trying to process that, please try again.")
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
+		log.Println(err)
 		return
 	}
 
@@ -187,10 +227,9 @@ func HandleUpdateUserDetails(c *gin.Context) {
 }
 
 // @Summary Deletes a user using a user id
-// @tags users
-// @Router /api/users/deleteUser [delete]
-func HandleDeleteUser(c *gin.Context) {
-
+// @tags master/users
+// @Router /master/api/users/deleteUser [delete]
+func HandleMasterDeleteUser(c *gin.Context) {
 	var json resources.DeleteUserRequest
 
 	if err := c.ShouldBindJSON(&json); err != nil {
@@ -198,13 +237,10 @@ func HandleDeleteUser(c *gin.Context) {
 		return
 	}
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
-	outcome, err := services.DeleteUser(json.Id, db.(*gorm.DB))
+	outcome, err := services.DeleteMasterUser(json.Id)
 
 	if err != nil {
-		resources.Failed(c, http.StatusInternalServerError, "Something went wrong while trying to process that, please try again.")
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
 		log.Println(err)
 		return
 	}
@@ -213,9 +249,9 @@ func HandleDeleteUser(c *gin.Context) {
 }
 
 // @Summary Attempts to get a existing user by id
-// @tags users
-// @Router /api/users/getUserById [get]
-func HandleGetUserById(c *gin.Context) {
+// @tags master/users
+// @Router /master/api/users/getUserById [get]
+func HandleMasterGetUserById(c *gin.Context) {
 	// Were using delete params as it shares the same interface.
 	var json resources.DeleteUserRequest
 
@@ -224,13 +260,10 @@ func HandleGetUserById(c *gin.Context) {
 		return
 	}
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
-	outcome, err := services.GetUser(json.Id, db.(*gorm.DB))
+	outcome, err := services.GetMasterUser(json.Id)
 
 	if err != nil {
-		resources.Failed(c, http.StatusInternalServerError, "Something went wrong while trying to process that, please try again.", err.Error())
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
 		log.Println(err)
 		return
 	}
@@ -239,20 +272,17 @@ func HandleGetUserById(c *gin.Context) {
 }
 
 // @Summary Attempts to get the currently logged in user using there session id.
-// @tags users
-// @Router /api/users/getCurrentUser [get]
-func HandleGetCurrentUser(c *gin.Context) {
+// @tags master/users
+// @Router /master/api/users/getCurrentUser [get]
+func HandleMasterGetCurrentUser(c *gin.Context) {
 
 	// Get the currently logged int user id.
 	userId := c.MustGet("userId")
 
-	// Get the database object from the connection.
-	db, _ := c.Get("connection")
-
-	outcome, err := services.GetUser(userId.(uint), db.(*gorm.DB))
+	outcome, err := services.GetMasterUser(userId.(uint))
 
 	if err != nil {
-		resources.Failed(c, http.StatusInternalServerError, "Something went wrong while trying to process that, please try again.", err.Error())
+		resources.Failed(c, http.StatusInternalServerError, err.Error())
 		log.Println(err)
 		return
 	}

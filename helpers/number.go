@@ -1,8 +1,6 @@
 package helpers
 
-import (
-	"strconv"
-)
+import "strconv"
 
 // Convert integer number to a string
 func Int64ToString(inputNum int64) string {

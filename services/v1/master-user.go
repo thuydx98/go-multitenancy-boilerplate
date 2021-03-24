@@ -2,20 +2,22 @@ package v1services
 
 import (
 	"errors"
-	helpers "go-multitenancy-boilerplate/helpers"
-	"go-multitenancy-boilerplate/models"
 
-	"github.com/jinzhu/gorm"
+	database "go-multitenancy-boilerplate/database"
+	helpers "go-multitenancy-boilerplate/helpers"
+	models "go-multitenancy-boilerplate/models"
 )
+
+type MasterUser models.MasterUser
 
 // Creates a standard user in the database.
 // Returns the inserted user id
-func CreateUser(email string, password string, accountType int, connection *gorm.DB) (uint, error) {
+func CreateMasterUser(email string, password string, accountType int) (uint, error) {
 
 	// Slice for found users.
-	var foundUsers []models.User
+	var foundUsers []MasterUser
 
-	if err := connection.Select("email").Where("email = ?", email).Find(&foundUsers).Error; err != nil {
+	if err := database.Connection.Select("email").Where("email = ?", email).Find(&foundUsers).Error; err != nil {
 		return 0, err
 	}
 
@@ -32,10 +34,10 @@ func CreateUser(email string, password string, accountType int, connection *gorm
 		return 0, hashErr
 	}
 
-	var user = models.User{Email: email, Password: hash, AccountType: accountType}
+	var user = MasterUser{Email: email, Password: hash, AccountType: accountType}
 
 	// Run create
-	if err := connection.Create(&user).Error; err != nil {
+	if err := database.Connection.Create(&user).Error; err != nil {
 		// Error Handler
 		return 0, err
 	}
@@ -45,13 +47,13 @@ func CreateUser(email string, password string, accountType int, connection *gorm
 }
 
 // Logs a user in.
-func LoginUser(email string, password string, connection *gorm.DB) (uint, bool, error) {
+func LoginMasterUser(email string, password string) (uint, bool, error) {
 
 	// Create local state user
-	var user models.User
+	var user MasterUser
 
 	// Find the user by email, return error if input is malformed.
-	if err := connection.First(&user, "email = ?", email).Error; err != nil {
+	if err := database.Connection.First(&user, "email = ?", email).Error; err != nil {
 		return 0, false, err
 	}
 
@@ -67,32 +69,31 @@ func LoginUser(email string, password string, connection *gorm.DB) (uint, bool, 
 
 // Updates a user in the database.
 // A separate method is called when updating a company id
-func UpdateUser(id uint, email string, accountType int, firstName string, lastName string, phoneNumber string, recoveryEmail string, connection *gorm.DB) (string, error) {
+func UpdateMasterUser(id uint, email string, accountType int, firstName string, lastName string, phoneNumber string, recoveryEmail string) (string, error) {
 
-	var user models.User
+	var user MasterUser
 
 	// Update the basic user information, anything that was set as nil will not be changed.
-	err := connection.Model(&user).Where("id = ?", id).Updates(models.User{
+	if err := database.Connection.Model(&user).Where("id = ?", id).Updates(MasterUser{
 		Email:         email,
 		AccountType:   accountType,
 		FirstName:     firstName,
 		LastName:      lastName,
 		PhoneNumber:   phoneNumber,
 		RecoveryEmail: recoveryEmail,
-	}).Error
-
-	if err != nil {
+	}).Error; err != nil {
 		return "", err
 	}
 
-	return "User Information Successfully Updated", nil
+	return "User Information Successfully Updated.", nil
+
 }
 
 // Deletes a user in the database.
-func DeleteUser(id uint, connection *gorm.DB) (string, error) {
-	var user models.User
+func DeleteMasterUser(id uint) (string, error) {
+	var user MasterUser
 
-	if err := connection.Where("id = ?", id).Delete(&user).Error; err != nil {
+	if err := database.Connection.Where("id = ?", id).Delete(&user).Error; err != nil {
 		return "An error occurred when trying to delete the user", err
 	}
 
@@ -100,11 +101,11 @@ func DeleteUser(id uint, connection *gorm.DB) (string, error) {
 }
 
 // Get a specific user from the database.
-func GetUser(id uint, connection *gorm.DB) (*models.User, error) {
+func GetMasterUser(id uint) (*MasterUser, error) {
 
-	var user models.User
+	var user MasterUser
 
-	if err := connection.Select("id, created_at, updated_at, deleted_at, email, account_type, company_id, first_name, last_name").Where("id = ? ", id).First(&user).Error; err != nil {
+	if err := database.Connection.Select("id, created_at, updated_at, deleted_at, email, account_type, company_id, first_name, last_name").Where("id = ? ", id).First(&user).Error; err != nil {
 		return nil, err
 	}
 

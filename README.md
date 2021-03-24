@@ -1,22 +1,22 @@
 # Golang Multi-Tenancy Skeleton With Fully Managed Versions For Kick Start GoLang Project Development
-<a href="https://travis-ci.org/Mindinventory/Golang-Project-Structure" style="pointer-events: none;" target="_blank"><img src="https://travis-ci.org/Mindinventory/Golang-Project-Structure.svg?branch=master"></a>
+<a href="https://travis-ci.org/thuydx98/go-multitenancy-boilerplate" style="pointer-events: none;" target="_blank"><img src="https://travis-ci.org/thuydx98/go-multitenancy-boilerplate.svg?branch=master"></a>
 <a href="https://godoc.org/fyne.io/fyne" style="pointer-events: none;" target="_blank"><img src="https://img.shields.io/badge/go-documentation-blue.svg"></a>
-<a href="https://goreportcard.com/report/github.com/Mindinventory/Golang-Project-Structure" style="pointer-events: none;" target="_blank"><img src="https://goreportcard.com/badge/github.com/Mindinventory/Golang-Project-Structure"></a>
+<a href="https://goreportcard.com/report/github.com/thuydx98/go-multitenancy-boilerplate" style="pointer-events: none;" target="_blank"><img src="https://goreportcard.com/badge/github.com/thuydx98/go-multitenancy-boilerplate"></a>
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/thuydx98/go-multitenancy-boilerplate/blob/master/LICENSE)
 
-There is no doubt that Golang’s good documentation and intelligent features could help developers in learning language efficiently and outcome might be promising still, What Golang is missing is the common structure to quick start any API Structure. While working on several Golang Projects, Golang Developers at Mindinventory confront the requirement of having an effective and well Integrated GoLang API Development Structure and as a result of which they came up with one. 
+There is no doubt that Golang’s good documentation and intelligent features could help developers in learning language efficiently and outcome might be promising still, What Golang is missing is the common structure to quick start any API Structure. While working on several Golang Projects, Golang Developers at thuydx98 confront the requirement of having an effective and well Integrated GoLang API Development Structure and as a result of which they came up with one. 
 
 - gorm : It is the ORM library in Go which provides user friendly functions to interact with database. It supports features like ORM, Associations, Hooks, Preloading, Transaction, Auto Migration, Logger etc.
 - gin : Gin is a web framework for Go language. Here gin is used for increase performance and productivity.
 - godotenv : Basically used for load env variables from .env file.
 - postgresql : It provides the postgresql driver for connecting Go with Postgres SQL.
 
-Check out our blog to know how to use Golang API Skeleton with Fully Managed Versions to kick start Golang project. (https://www.mindinventory.com/blog/golang-project-structure/)
+Check out our blog to know how to use Golang API Skeleton with Fully Managed Versions to kick start Golang project. (https://www.thuydx98.com/blog/go-multitenancy-boilerplate/)
 
 
 ## STRUCTURE
 
-<img src="https://raw.githubusercontent.com/Mindinventory/Golang-Project-Structure/master/structure.png" width=400>
+<img src="https://raw.githubusercontent.com/thuydx98/go-multitenancy-boilerplate/master/structure.png" width=400>
 
 
 ## What it is?
@@ -29,7 +29,7 @@ It is a fully managed repository, where one can find all required components in 
 One need to install the latest version of Go i.e 1.12 (Released in Feb 2019) from https://golang.org/dl/ and setup GOROOT and GOPATH.
 
 ## Components 
-<center><img src="https://raw.githubusercontent.com/Mindinventory/Golang-Project-Structure/master/gif.gif"></center>
+<center><img src="https://raw.githubusercontent.com/thuydx98/go-multitenancy-boilerplate/master/gif.gif"></center>
 
 
 ### 1. ApiHelpers
@@ -97,4 +97,4 @@ Contains environment variables.
 Go Project Structure is [MIT-licensed](https://github.com/thuydx98/go-multitenancy-boilerplate/blob/master/LICENSE)
 
 ## Let us know!
-We’d be really happy if you sent us links to your projects where you use our component. Just send an email to sales@mindinventory.com And do let us know if you have any questions or suggestion regarding our work.
+We’d be really happy if you sent us links to your projects where you use our component. Just send an email to sales@thuydx98.com And do let us know if you have any questions or suggestion regarding our work.

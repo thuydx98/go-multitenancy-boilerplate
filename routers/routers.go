@@ -1,8 +1,7 @@
 package routers
 
 import (
-	apiControllerV1 "go-multitenancy-boilerplate/controllers/v1"
-	"go-multitenancy-boilerplate/middlewares"
+	v1 "go-multitenancy-boilerplate/controllers/v1"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,17 +9,27 @@ import (
 // SetupRouter function will perform all route operations
 func SetupRouter() *gin.Engine {
 
-	r := gin.Default()
+	router := gin.Default()
 
 	// Giving access to storage folder
-	r.Static("/storage", "storage")
+	router.Static("/storage", "storage")
 
 	// Giving access to template folder
-	r.Static("/templates", "templates")
-	r.LoadHTMLGlob("templates/*")
+	router.Static("/templates", "templates")
+	router.LoadHTMLGlob("templates/*")
 
-	r.Use(func(c *gin.Context) {
-		// add header Access-Control-Allow-Origin
+	router.Use(CORSMiddleware())
+
+	// API route for version 1
+	v1.SetupUserRoutes(router)
+	v1.SetupMasterUserRoutes(router)
+	v1.SetupTenantRoutes(router)
+
+	return router
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/json")
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
@@ -33,17 +42,5 @@ func SetupRouter() *gin.Engine {
 		} else {
 			c.Next()
 		}
-	})
-
-	// API route for version 1
-	v1 := r.Group("/api/v1")
-
-	// If you want to pass your route through specific middlewares
-	v1.Use(middlewares.UserMiddlewares())
-	{
-		v1.POST("users", apiControllerV1.UserList)
 	}
-
-	return r
-
 }
