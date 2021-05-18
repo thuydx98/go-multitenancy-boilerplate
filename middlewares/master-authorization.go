@@ -27,6 +27,6 @@ func IfMasterAuthorized(Store *gormstore.Store) gin.HandlerFunc {
 		}
 
 		// Pass the user id into the handler.
-		c.Set("userId", sessionValues.Values["userId"])
+		c.Set("userId", profile.UserId)
 	}
 }

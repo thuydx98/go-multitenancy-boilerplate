@@ -86,7 +86,6 @@ func UpdateMasterUser(id uint, email string, accountType int, firstName string, 
 	}
 
 	return "User Information Successfully Updated.", nil
-
 }
 
 // Deletes a user in the database.
@@ -105,7 +104,7 @@ func GetMasterUser(id uint) (*MasterUser, error) {
 
 	var user MasterUser
 
-	if err := database.Connection.Select("id, created_at, updated_at, deleted_at, email, account_type, company_id, first_name, last_name").Where("id = ? ", id).First(&user).Error; err != nil {
+	if err := database.Connection.Select("id, created_at, updated_at, email, account_type, first_name, last_name, phone_number").Where("id = ? ", id).First(&user).Error; err != nil {
 		return nil, err
 	}
 

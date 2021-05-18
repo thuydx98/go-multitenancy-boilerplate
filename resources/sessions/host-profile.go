@@ -1,8 +1,6 @@
 package resources
 
-import (
-	"time"
-)
+import "time"
 
 type HostProfile struct {
 	LoginAttempts        map[string]*LoginAttempt // Key is used email address

@@ -56,7 +56,7 @@ func HandleMasterCreateUser(c *gin.Context) {
 	}
 
 	if !helpers.ValidateEmail(json.Email) {
-		resources.Failed(c, http.StatusBadRequest, "Email or Password provided are incorrect, please try again.")
+		resources.Failed(c, http.StatusBadRequest, "Email is incorrect, please try again.")
 		return
 	}
 
